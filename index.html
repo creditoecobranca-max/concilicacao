@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f6f2">
+  <title>Concilia | Financeiro</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+    :root {
+      color-scheme: light;
+      --ink: #1d2924;
+      --muted: #78827b;
+      --line: #e3e8e1;
+      --paper: #f4f6f2;
+      --white: #fff;
+      --green: #237b58;
+      --green-soft: #e6f3eb;
+      --orange: #be6037;
+      --orange-soft: #fbefe8;
+      --yellow: #f2c557;
+      --shadow: 0 16px 42px rgba(32, 54, 42, .11);
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; background: var(--paper); color: var(--ink); }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    .app { display: grid; min-height: 100vh; grid-template-columns: 220px minmax(0, 1fr); }
+    .sidebar { display: flex; flex-direction: column; padding: 27px 16px 20px; background: #1f3029; color: #f4f7f3; }
+    .brand { display: flex; align-items: center; gap: 11px; padding: 0 9px; font: 800 18px 'Manrope', sans-serif; letter-spacing: 0; }
+    .brand-mark { display: grid; width: 31px; height: 31px; place-items: center; border-radius: 9px; background: var(--yellow); color: #203229; }
+    .brand-mark svg { width: 18px; height: 18px; }
+    .workspace { margin: 41px 9px 10px; color: #91a197; font: 500 10px 'DM Mono', monospace; letter-spacing: 1.2px; text-transform: uppercase; }
+    .nav { display: grid; gap: 5px; }
+    .nav button { display: flex; align-items: center; gap: 11px; padding: 11px 10px; border: 0; border-radius: 6px; background: transparent; color: #bdc9c1; text-align: left; font-size: 13px; }
+    .nav button.active { background: #31483d; color: white; }
+    .nav svg { width: 17px; height: 17px; opacity: .8; }
+    .sidebar-foot { margin-top: auto; padding: 16px 9px 0; border-top: 1px solid #3a4b42; color: #a7b3ac; font-size: 11px; line-height: 1.6; }
+    .local-dot { display: inline-block; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; background: #72c59a; }
+    main { min-width: 0; padding: 26px clamp(20px, 4vw, 58px) 48px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 34px; }
+    .crumb { color: var(--muted); font-size: 12px; }
+    .top-actions { display: flex; align-items: center; gap: 10px; }
+    .today { color: var(--muted); font: 11px 'DM Mono', monospace; }
+    .avatar { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid #d6dfd7; border-radius: 50%; background: #e7eee7; color: #345742; font-size: 11px; font-weight: 700; }
+    .heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 25px; }
+    h1 { margin: 0; font: 700 29px 'Manrope', sans-serif; letter-spacing: 0; }
+    .heading p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+    .heading-actions { display: flex; gap: 8px; }
+    .btn:disabled { cursor: wait; opacity: .65; }
+    .btn { display: inline-flex; min-height: 38px; align-items: center; justify-content: center; gap: 8px; padding: 0 13px; border: 1px solid var(--line); border-radius: 5px; background: white; color: var(--ink); font-size: 12px; font-weight: 600; transition: background .16s, transform .16s; }
+    .btn:hover { transform: translateY(-1px); background: #f8faf7; }
+    .btn svg { width: 15px; height: 15px; }
+    .btn.primary { border-color: var(--green); background: var(--green); color: white; }
+    .btn.primary:hover { background: #1c684a; }
+    .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 25px; }
+    .metric { position: relative; min-height: 113px; padding: 17px 18px; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: var(--white); }
+    .metric::after { position: absolute; right: -17px; bottom: -34px; width: 88px; height: 88px; border: 1px solid #edf1ec; border-radius: 50%; content: ''; }
+    .metric-label { color: var(--muted); font-size: 11px; }
+    .metric-value { margin-top: 14px; font: 700 23px 'Manrope', sans-serif; letter-spacing: 0; }
+    .metric-note { margin-top: 3px; color: var(--muted); font-size: 10px; }
+    .metric.accent { border-color: #e4eee6; background: #eaf3eb; }
+    .metric.accent .metric-value { color: var(--green); }
+    .section-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 0 0 13px; }
+    .section-head h2 { margin: 0; font: 700 15px 'Manrope', sans-serif; letter-spacing: 0; }
+    .section-head .sub { margin-left: 8px; color: var(--muted); font-size: 11px; font-weight: 400; }
+    .queue-count { display: inline-grid; min-width: 21px; height: 21px; place-items: center; margin-left: 5px; border-radius: 50%; background: var(--orange-soft); color: var(--orange); font: 500 10px 'DM Mono', monospace; }
+    .work-area { display: grid; grid-template-columns: minmax(0, 1.13fr) minmax(310px, .87fr); gap: 17px; align-items: start; }
+    .app[data-view="invoices"] .work-area,
+    .app[data-view="receipts"] .work-area { grid-template-columns: minmax(0, 1fr); }
+    .app[data-view="invoices"] #receipts-section,
+    .app[data-view="receipts"] #invoices-section { display: none; }
+    .panel { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: var(--white); }
+    .panel-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 17px 12px; }
+    .search { position: relative; width: min(185px, 45%); }
+    .search svg { position: absolute; top: 9px; left: 9px; width: 14px; height: 14px; color: #89938c; }
+    .search input { width: 100%; height: 32px; padding: 0 9px 0 29px; border: 1px solid var(--line); border-radius: 4px; outline: none; font-size: 11px; }
+    .search input:focus, .field input:focus, .field select:focus { border-color: #6ea586; box-shadow: 0 0 0 3px rgba(35, 123, 88, .1); }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+    th { padding: 10px 12px; border-top: 1px solid #edf0ec; border-bottom: 1px solid #edf0ec; background: #fafbf9; color: #7d8981; text-align: left; font: 10px 'DM Mono', monospace; }
+    td { padding: 13px 12px; border-bottom: 1px solid #eef1ed; font-size: 11px; }
+    tbody tr:last-child td { border-bottom: 0; }
+    .vendor { font-size: 12px; font-weight: 600; }
+    .secondary { display: block; margin-top: 4px; color: var(--muted); font: 10px 'DM Mono', monospace; }
+    .amount { font: 500 11px 'DM Mono', monospace; }
+    .progress { width: 100px; height: 5px; margin-top: 7px; overflow: hidden; border-radius: 9px; background: #edf0ec; }
+    .progress i { display: block; height: 100%; border-radius: inherit; background: var(--green); }
+    .progress-meta { margin-top: 5px; color: var(--muted); font-size: 9px; }
+    .status { display: inline-flex; align-items: center; gap: 5px; padding: 5px 7px; border-radius: 3px; background: #f0f3ef; color: #647168; font-size: 10px; }
+    .status::before { width: 5px; height: 5px; border-radius: 50%; background: #92a198; content: ''; }
+    .status.partial { background: #fff5dc; color: #916d19; }
+    .status.partial::before { background: #dfa92f; }
+    .status.paid { background: var(--green-soft); color: var(--green); }
+    .status.paid::before { background: var(--green); }
+    .empty { padding: 28px 15px; color: var(--muted); text-align: center; font-size: 12px; }
+    .receipt-list { display: grid; }
+    .receipt { padding: 15px 17px; border-top: 1px solid #edf0ec; }
+    .receipt:first-child { border-top: 0; }
+    .receipt-row { display: flex; align-items: start; justify-content: space-between; gap: 10px; }
+    .receipt-name { font-size: 12px; font-weight: 700; }
+    .receipt-ref { margin-top: 4px; color: var(--muted); font: 10px 'DM Mono', monospace; }
+    .receipt-value { white-space: nowrap; font: 600 13px 'DM Mono', monospace; }
+    .receipt-value small { display: block; margin-top: 4px; color: var(--muted); text-align: right; font: 9px 'DM Sans', sans-serif; }
+    .suggestion { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 13px; padding: 10px; border-radius: 4px; background: #f5f8f4; }
+    .suggest-copy { min-width: 0; }
+    .suggest-label { color: var(--muted); font-size: 9px; }
+    .suggest-vendor { overflow: hidden; margin-top: 3px; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 600; }
+    .match-tag { color: var(--green); font-size: 9px; }
+    .btn-link { flex: 0 0 auto; padding: 6px 9px; border: 1px solid #b9d6c3; border-radius: 4px; background: white; color: var(--green); font-size: 10px; font-weight: 700; }
+    .btn-link:hover { background: var(--green-soft); }
+    .history { margin-top: 24px; }
+    .history .panel { padding: 15px 17px; }
+    .history-line { display: flex; align-items: center; gap: 10px; padding: 6px 0; color: #68756c; font-size: 10px; }
+    .history-line strong { color: var(--ink); font-weight: 600; }
+    .history-line time { margin-left: auto; color: #89938c; font: 9px 'DM Mono', monospace; }
+    .receipt-icon { display: grid; flex: 0 0 auto; width: 27px; height: 27px; place-items: center; border-radius: 50%; background: #eef4ed; color: var(--green); }
+    .receipt-icon svg { width: 13px; height: 13px; }
+    dialog { width: min(470px, calc(100% - 28px)); max-height: min(86vh, 760px); padding: 0; overflow: auto; border: 1px solid #dfe6df; border-radius: 8px; background: white; box-shadow: var(--shadow); }
+    dialog::backdrop { background: rgba(26, 43, 34, .42); backdrop-filter: blur(2px); }
+    .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 19px 21px 14px; border-bottom: 1px solid var(--line); }
+    .modal-head h3 { margin: 0; font: 700 17px 'Manrope', sans-serif; }
+    .icon-close { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid var(--line); border-radius: 4px; background: white; color: var(--muted); font-size: 18px; line-height: 1; }
+    .form { display: grid; gap: 14px; padding: 18px 21px 21px; }
+    .field { display: grid; gap: 6px; }
+    .field label { color: #59665d; font-size: 11px; font-weight: 600; }
+    .field input, .field select { width: 100%; height: 38px; padding: 0 10px; border: 1px solid #dfe5df; border-radius: 4px; outline: none; color: var(--ink); font-size: 12px; }
+    .field input[type=file] { height: auto; padding: 9px; color: var(--muted); font-size: 10px; }
+    .ocr-status { min-height: 15px; color: var(--green); font-size: 10px; }
+    .attachment-button { display: inline-block; margin-top: 5px; padding: 0; border: 0; background: transparent; color: var(--green); font-size: 9px; text-decoration: underline; cursor: pointer; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-actions { display: flex; justify-content: end; gap: 8px; margin-top: 5px; }
+    .allocation-note { padding: 11px 12px; border-radius: 4px; background: #f2f6f1; color: #5e6b62; font-size: 11px; line-height: 1.5; }
+    .allocation-note strong { color: var(--ink); }
+    .toast { position: fixed; right: 24px; bottom: 24px; z-index: 4; padding: 12px 16px; transform: translateY(12px); border-radius: 5px; background: #20372b; color: white; box-shadow: var(--shadow); opacity: 0; pointer-events: none; font-size: 12px; transition: opacity .2s, transform .2s; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    @media (max-width: 980px) {
+      .app { grid-template-columns: 67px minmax(0, 1fr); }
+      .sidebar { align-items: center; padding-inline: 8px; }
+      .brand { padding: 0; }
+      .brand-name, .workspace, .nav span, .sidebar-foot { display: none; }
+      .nav { margin-top: 37px; }
+      .nav button { width: 43px; height: 43px; justify-content: center; padding: 0; }
+      .nav svg { width: 19px; height: 19px; }
+      .work-area { grid-template-columns: minmax(0, 1fr); }
+      .receipt-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .receipt:nth-child(2) { border-top: 0; border-left: 1px solid #edf0ec; }
+    }
+    @media (max-width: 660px) {
+      main { padding: 18px 14px 32px; }
+      .topbar { margin-bottom: 25px; }
+      .today { display: none; }
+      .heading { align-items: start; flex-direction: column; gap: 16px; margin-bottom: 19px; }
+      h1 { font-size: 25px; }
+      .heading-actions { width: 100%; }
+      .heading-actions .btn { flex: 1; padding-inline: 8px; }
+      .heading-actions #export-excel { flex: 0 0 42px; padding-inline: 0; }
+      .heading-actions #export-excel span { display: none; }
+      .metrics { grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 21px; }
+      .metric { min-height: 98px; padding: 13px; }
+      .metric-value { margin-top: 10px; font-size: 19px; }
+      .panel-top { padding-inline: 12px; }
+      .section-head .sub { display: block; margin: 4px 0 0; }
+      .receipt-list { grid-template-columns: 1fr; }
+      .receipt:nth-child(2) { border-top: 1px solid #edf0ec; border-left: 0; }
+      th, td { padding-inline: 9px; }
+      .progress { width: 78px; }
+      .form-grid { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <div class="app" data-view="overview">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m5 12 4 4L19 6"/></svg></span><span class="brand-name">concilia</span></div>
+      <div class="workspace">Financeiro</div>
+      <nav class="nav" aria-label="Navegação">
+        <button class="active" type="button" data-view="overview" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="5" rx="1"/><rect x="13" y="10" width="8" height="11" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/></svg><span>Visão geral</span></button>
+        <button type="button" data-view="invoices"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h7"/></svg><span>Boletos</span></button>
+        <button type="button" data-view="receipts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5h16v14H4zM8 9h8M8 13h5"/><path d="m8 3 2 2 2-2 2 2 2-2"/></svg><span>Comprovantes</span></button>
+      </nav>
+      <div class="sidebar-foot"><span class="local-dot"></span>Dados salvos neste navegador</div>
+    </aside>
+
+    <main>
+      <header class="topbar"><div class="crumb">Financeiro <span aria-hidden="true">/</span> Conciliação</div><div class="top-actions"><span class="today" id="today"></span><span class="avatar" aria-label="Usuário">CF</span></div></header>
+      <section class="heading"><div><h1>Conciliação</h1><p>Boletos e pagamentos em um só lugar.</p></div><div class="heading-actions"><button class="btn" id="export-excel" aria-label="Exportar conciliação para Excel" title="Exportar conciliação para Excel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7M10 14 21 3M19 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6"/><path d="M7 11h5M7 15h5"/></svg><span>Exportar Excel</span></button><button class="btn" id="add-invoice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>Novo boleto</button><button class="btn primary" id="add-receipt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>Novo comprovante</button></div></section>
+
+      <section class="metrics" aria-label="Resumo financeiro">
+        <article class="metric accent"><div class="metric-label">Saldo em aberto</div><div class="metric-value" id="metric-open">R$ 0,00</div><div class="metric-note" id="metric-open-note"></div></article>
+        <article class="metric"><div class="metric-label">Comprovantes pendentes</div><div class="metric-value" id="metric-receipts">0</div><div class="metric-note">Aguardando conciliação</div></article>
+        <article class="metric"><div class="metric-label">Boletos conciliados</div><div class="metric-value" id="metric-paid">0</div><div class="metric-note">Quitados integralmente</div></article>
+        <article class="metric"><div class="metric-label">Pagamentos parciais</div><div class="metric-value" id="metric-partial">0</div><div class="metric-note">Com saldo a receber</div></article>
+      </section>
+
+      <div class="work-area">
+        <section id="invoices-section">
+          <div class="section-head"><h2>Boletos <span class="sub">Acompanhamento de saldo</span></h2></div>
+          <div class="panel">
+            <div class="panel-top"><span class="crumb" id="invoice-count"></span><label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg><input id="invoice-search" type="search" placeholder="Buscar boleto" aria-label="Buscar boleto"></label></div>
+            <div class="table-wrap"><table><thead><tr><th>FORNECEDOR</th><th>VENCIMENTO</th><th>VALOR / PAGO</th><th>SALDO</th><th>STATUS</th></tr></thead><tbody id="invoice-rows"></tbody></table></div>
+          </div>
+        </section>
+        <section id="receipts-section">
+          <div class="section-head"><h2>Comprovantes <span class="sub">Sugestões de vínculo</span><span class="queue-count" id="receipt-count">0</span></h2></div>
+          <div class="panel"><div class="receipt-list" id="receipt-list"></div></div>
+        </section>
+      </div>
+
+      <section class="history"><div class="section-head"><h2>Últimas conciliações</h2></div><div class="panel" id="history-list"></div></section>
+    </main>
+  </div>
+
+  <dialog id="invoice-dialog">
+    <div class="modal-head"><h3>Novo boleto</h3><button class="icon-close" type="button" data-close aria-label="Fechar">×</button></div>
+    <form class="form" id="invoice-form">
+      <div class="field"><label for="invoice-vendor">Fornecedor / beneficiário</label><input id="invoice-vendor" name="vendor" required maxlength="80" placeholder="Ex.: Energia Sul"></div>
+      <div class="form-grid"><div class="field"><label for="invoice-ref">Número do boleto</label><input id="invoice-ref" name="reference" required maxlength="40" placeholder="Ex.: BL-2026-04"></div><div class="field"><label for="invoice-amount">Valor total (R$)</label><input id="invoice-amount" name="amount" type="number" min="0.01" step="0.01" required placeholder="900,00"></div></div>
+      <div class="field"><label for="invoice-due">Vencimento</label><input id="invoice-due" name="dueDate" type="date" required></div>
+      <div class="field"><label for="invoice-file">Anexar boleto (PDF ou imagem)</label><input id="invoice-file" name="file" type="file" accept="application/pdf,image/*"><span class="ocr-status" id="invoice-ocr-status" aria-live="polite"></span></div>
+      <div class="form-actions"><button class="btn" type="button" data-close>Cancelar</button><button class="btn primary" type="submit">Salvar boleto</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="receipt-dialog">
+    <div class="modal-head"><h3>Novo comprovante</h3><button class="icon-close" type="button" data-close aria-label="Fechar">×</button></div>
+    <form class="form" id="receipt-form">
+      <div class="field"><label for="receipt-payer">Pagador / descrição</label><input id="receipt-payer" name="payer" required maxlength="80" placeholder="Ex.: Energia Sul"></div>
+      <div class="form-grid"><div class="field"><label for="receipt-ref">Identificação (opcional)</label><input id="receipt-ref" name="reference" maxlength="40" placeholder="Número do boleto"></div><div class="field"><label for="receipt-amount">Valor pago (R$)</label><input id="receipt-amount" name="amount" type="number" min="0.01" step="0.01" required placeholder="300,00"></div></div>
+      <div class="form-grid"><div class="field"><label for="receipt-date">Data do pagamento</label><input id="receipt-date" name="date" type="date" required></div><div class="field"><label for="receipt-file">Anexar comprovante (PDF ou imagem)</label><input id="receipt-file" name="file" type="file" accept="application/pdf,image/*"><span class="ocr-status" id="receipt-ocr-status" aria-live="polite"></span></div></div>
+      <div class="allocation-note">Confira os dados reconhecidos antes de salvar. Os arquivos ficam neste navegador.</div>
+      <div class="form-actions"><button class="btn" type="button" data-close>Cancelar</button><button class="btn primary" type="submit">Adicionar comprovante</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="allocate-dialog">
+    <div class="modal-head"><h3>Conciliar pagamento</h3><button class="icon-close" type="button" data-close aria-label="Fechar">×</button></div>
+    <form class="form" id="allocate-form">
+      <div class="allocation-note" id="allocation-summary"></div>
+      <input type="hidden" name="receiptId">
+      <div class="field"><label for="allocate-invoice">Boleto</label><select id="allocate-invoice" name="invoiceId" required></select></div>
+      <div class="field"><label for="allocate-amount">Valor a conciliar (R$)</label><input id="allocate-amount" name="amount" type="number" min="0.01" step="0.01" required></div>
+      <div class="form-actions"><button class="btn" type="button" data-close>Cancelar</button><button class="btn primary" type="submit">Confirmar vínculo</button></div>
+    </form>
+  </dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const STORE_KEY = 'concilia-financeiro-v1';
+    const FILE_DB = 'concilia-arquivos-v1';
+    const FILE_STORE = 'attachments';
+    const MAX_FILE_SIZE = 12 * 1024 * 1024;
+    const day = new Date().toISOString().slice(0, 10);
+    const selectedFiles = { invoice: null, receipt: null };
+    let ocrWorkerPromise = null;
+    const initialData = {
+      invoices: [
+        { id: 'boleto-900', vendor: 'Oficina Horizonte', reference: 'BL-2026-041', amount: 900, dueDate: '2026-11-05' },
+        { id: 'boleto-1480', vendor: 'Energia Sul', reference: 'FAT-88310', amount: 1480, dueDate: '2026-11-08' },
+        { id: 'boleto-2750', vendor: 'Aluguel Comercial', reference: 'LOC-2026-11', amount: 2750, dueDate: '2026-11-10' }
+      ],
+      receipts: [
+        { id: 'pagamento-1', payer: 'Oficina Horizonte', reference: 'BL-2026-041', amount: 300, date: day, fileName: 'pagamento_parcela_01.pdf' },
+        { id: 'pagamento-2', payer: 'Oficina Horizonte', reference: 'BL-2026-041', amount: 300, date: day, fileName: 'pagamento_parcela_02.pdf' },
+        { id: 'pagamento-3', payer: 'Oficina Horizonte', reference: 'BL-2026-041', amount: 300, date: day, fileName: 'pagamento_parcela_03.pdf' },
+        { id: 'pagamento-4', payer: 'Energia Sul', reference: 'FAT-88310', amount: 1480, date: day, fileName: 'comprovante_energia.pdf' }
+      ],
+      allocations: [
+        { id: 'vinculo-1', receiptId: 'pagamento-1', invoiceId: 'boleto-900', amount: 300, date: day },
+        { id: 'vinculo-2', receiptId: 'pagamento-2', invoiceId: 'boleto-900', amount: 300, date: day },
+        { id: 'vinculo-4', receiptId: 'pagamento-4', invoiceId: 'boleto-1480', amount: 1480, date: day }
+      ]
+    };
+
+    function loadData() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORE_KEY));
+        if (saved && Array.isArray(saved.invoices) && Array.isArray(saved.receipts) && Array.isArray(saved.allocations)) return saved;
+      } catch (error) { console.warn('Não foi possível carregar os dados salvos.', error); }
+      return structuredClone(initialData);
+    }
+    let data = loadData();
+    const money = value => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
+    const makeId = () => globalThis.crypto?.randomUUID?.() || `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+    const formatDate = value => {
+      if (!value) return '—';
+      const [year, month, date] = value.split('-').map(Number);
+      return new Intl.DateTimeFormat('pt-BR').format(new Date(year, month - 1, date));
+    };
+    const paidForInvoice = id => data.allocations.filter(item => item.invoiceId === id).reduce((sum, item) => sum + item.amount, 0);
+    const allocatedForReceipt = id => data.allocations.filter(item => item.receiptId === id).reduce((sum, item) => sum + item.amount, 0);
+    const remainingForInvoice = invoice => Math.max(0, invoice.amount - paidForInvoice(invoice.id));
+    const remainingForReceipt = receipt => Math.max(0, receipt.amount - allocatedForReceipt(receipt.id));
+    const pendingReceipts = () => data.receipts.filter(receipt => remainingForReceipt(receipt) > 0.005);
+
+    function suggestionsFor(receipt) {
+      const text = `${receipt.payer} ${receipt.reference || ''}`.toLocaleLowerCase('pt-BR');
+      return data.invoices.map(invoice => {
+        const balance = remainingForInvoice(invoice);
+        if (balance <= 0.005) return null;
+        const referenceMatch = receipt.reference && invoice.reference.toLocaleLowerCase('pt-BR') === receipt.reference.toLocaleLowerCase('pt-BR');
+        const vendorMatch = receipt.payer.toLocaleLowerCase('pt-BR').includes(invoice.vendor.toLocaleLowerCase('pt-BR')) || invoice.vendor.toLocaleLowerCase('pt-BR').includes(receipt.payer.toLocaleLowerCase('pt-BR'));
+        const amountMatch = Math.abs(balance - remainingForReceipt(receipt)) < 0.01;
+        const partialFit = remainingForReceipt(receipt) < balance;
+        let score = (referenceMatch ? 100 : 0) + (vendorMatch ? 55 : 0) + (amountMatch ? 25 : 0) + (partialFit ? 8 : 0);
+        if (!referenceMatch && !vendorMatch && !amountMatch) return null;
+        return { invoice, balance, score, reasons: [referenceMatch && 'identificação', vendorMatch && 'beneficiário', amountMatch && 'valor exato'].filter(Boolean) };
+      }).filter(Boolean).sort((a, b) => b.score - a.score || a.balance - b.balance);
+    }
+
+    function save() {
+      try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); }
+      catch (error) { notify('Não foi possível salvar neste navegador.'); console.error(error); }
+      render();
+    }
+    function notify(message) {
+      const toast = document.querySelector('#toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      clearTimeout(notify.timeout);
+      notify.timeout = setTimeout(() => toast.classList.remove('show'), 2600);
+    }
+    async function exportExcel() {
+      const button = document.querySelector('#export-excel');
+      button.disabled = true;
+      try {
+        await loadScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
+        const workbook = XLSX.utils.book_new();
+        const totalOpen = data.invoices.reduce((sum, invoice) => sum + remainingForInvoice(invoice), 0);
+        const pending = pendingReceipts();
+        const summary = [
+          ['Relatório de conciliação', ''],
+          ['Data de geração', day],
+          ['Boletos cadastrados', data.invoices.length],
+          ['Boletos conciliados', data.invoices.filter(invoice => remainingForInvoice(invoice) <= 0.005).length],
+          ['Boletos com pagamento parcial', data.invoices.filter(invoice => paidForInvoice(invoice.id) > 0.005 && remainingForInvoice(invoice) > 0.005).length],
+          ['Comprovantes pendentes', pending.length],
+          ['Saldo total em aberto', totalOpen]
+        ];
+        const summarySheet = XLSX.utils.aoa_to_sheet(summary);
+        summarySheet['!cols'] = [{ wch: 32 }, { wch: 24 }];
+        if (summarySheet.B7) summarySheet.B7.z = 'R$ #,##0.00';
+        XLSX.utils.book_append_sheet(workbook, summarySheet, 'Resumo');
+
+        const invoiceRows = [['Fornecedor', 'Número do boleto', 'Vencimento', 'Valor total', 'Total pago', 'Saldo em aberto', 'Status', 'Arquivo']];
+        for (const invoice of data.invoices) {
+          const paid = paidForInvoice(invoice.id);
+          const balance = remainingForInvoice(invoice);
+          invoiceRows.push([invoice.vendor, invoice.reference, invoice.dueDate || '', invoice.amount, paid, balance, balance <= 0.005 ? 'Conciliado' : paid > 0.005 ? 'Parcial' : 'Em aberto', invoice.fileName || '']);
+        }
+        const invoiceSheet = XLSX.utils.aoa_to_sheet(invoiceRows);
+        invoiceSheet['!cols'] = [{ wch: 28 }, { wch: 22 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 32 }];
+        invoiceSheet['!autofilter'] = { ref: invoiceSheet['!ref'] };
+        formatExcelCurrency(invoiceSheet, [3, 4, 5], invoiceRows.length - 1);
+        XLSX.utils.book_append_sheet(workbook, invoiceSheet, 'Boletos');
+
+        const receiptRows = [['Pagador / descrição', 'Identificação', 'Data do pagamento', 'Valor do comprovante', 'Valor conciliado', 'Valor disponível', 'Arquivo']];
+        for (const receipt of data.receipts) {
+          receiptRows.push([receipt.payer, receipt.reference || '', receipt.date || '', receipt.amount, allocatedForReceipt(receipt.id), remainingForReceipt(receipt), receipt.fileName || '']);
+        }
+        const receiptSheet = XLSX.utils.aoa_to_sheet(receiptRows);
+        receiptSheet['!cols'] = [{ wch: 28 }, { wch: 22 }, { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 18 }, { wch: 32 }];
+        receiptSheet['!autofilter'] = { ref: receiptSheet['!ref'] };
+        formatExcelCurrency(receiptSheet, [3, 4, 5], receiptRows.length - 1);
+        XLSX.utils.book_append_sheet(workbook, receiptSheet, 'Comprovantes');
+
+        const allocationRows = [['Data da conciliação', 'Fornecedor', 'Número do boleto', 'Pagador', 'Identificação do comprovante', 'Arquivo do comprovante', 'Valor conciliado']];
+        for (const allocation of data.allocations) {
+          const invoice = data.invoices.find(item => item.id === allocation.invoiceId);
+          const receipt = data.receipts.find(item => item.id === allocation.receiptId);
+          if (invoice && receipt) allocationRows.push([allocation.date || '', invoice.vendor, invoice.reference, receipt.payer, receipt.reference || '', receipt.fileName || '', allocation.amount]);
+        }
+        const allocationSheet = XLSX.utils.aoa_to_sheet(allocationRows);
+        allocationSheet['!cols'] = [{ wch: 18 }, { wch: 28 }, { wch: 22 }, { wch: 28 }, { wch: 26 }, { wch: 32 }, { wch: 18 }];
+        allocationSheet['!autofilter'] = { ref: allocationSheet['!ref'] };
+        formatExcelCurrency(allocationSheet, [6], allocationRows.length - 1);
+        XLSX.utils.book_append_sheet(workbook, allocationSheet, 'Conciliações');
+
+        XLSX.writeFile(workbook, `conciliacao_${day}.xlsx`);
+        notify('Planilha Excel exportada.');
+      } catch (error) {
+        console.error('Falha ao exportar planilha.', error);
+        notify('Não foi possível gerar o Excel. Verifique a conexão e tente novamente.');
+      } finally {
+        button.disabled = false;
+      }
+    }
+    function formatExcelCurrency(sheet, columns, lastDataRow) {
+      for (let row = 1; row <= lastDataRow; row++) {
+        for (const column of columns) {
+          const cell = sheet[XLSX.utils.encode_cell({ r: row, c: column })];
+          if (cell) cell.z = 'R$ #,##0.00';
+        }
+      }
+    }
+    function render() {
+      const totalOpen = data.invoices.reduce((sum, invoice) => sum + remainingForInvoice(invoice), 0);
+      const pending = pendingReceipts();
+      const paidCount = data.invoices.filter(invoice => remainingForInvoice(invoice) <= 0.005).length;
+      const partialCount = data.invoices.filter(invoice => paidForInvoice(invoice.id) > 0.005 && remainingForInvoice(invoice) > 0.005).length;
+      document.querySelector('#metric-open').textContent = money(totalOpen);
+      document.querySelector('#metric-open-note').textContent = `${data.invoices.filter(invoice => remainingForInvoice(invoice) > 0.005).length} boletos com saldo`;
+      document.querySelector('#metric-receipts').textContent = pending.length;
+      document.querySelector('#metric-paid').textContent = paidCount;
+      document.querySelector('#metric-partial').textContent = partialCount;
+      document.querySelector('#receipt-count').textContent = pending.length;
+
+      const query = document.querySelector('#invoice-search').value.trim().toLocaleLowerCase('pt-BR');
+      const invoices = data.invoices.filter(invoice => `${invoice.vendor} ${invoice.reference}`.toLocaleLowerCase('pt-BR').includes(query));
+      document.querySelector('#invoice-count').textContent = `${invoices.length} ${invoices.length === 1 ? 'boleto' : 'boletos'}`;
+      document.querySelector('#invoice-rows').innerHTML = invoices.length ? invoices.map(invoice => {
+        const paid = paidForInvoice(invoice.id);
+        const balance = remainingForInvoice(invoice);
+        const percent = Math.min(100, paid / invoice.amount * 100);
+        const status = balance <= 0.005 ? ['paid', 'Conciliado'] : paid > 0.005 ? ['partial', 'Parcial'] : ['', 'Em aberto'];
+        return `<tr><td><span class="vendor">${escapeHtml(invoice.vendor)}</span><span class="secondary">${escapeHtml(invoice.reference)}</span>${invoice.fileId ? `<button type="button" class="attachment-button" data-open-file="${escapeHtml(invoice.fileId)}">Abrir ${escapeHtml(invoice.fileName || 'anexo')}</button>` : ''}</td><td>${formatDate(invoice.dueDate)}</td><td><span class="amount">${money(invoice.amount)}</span><div class="progress"><i style="width:${percent}%"></i></div><div class="progress-meta">${money(paid)} pago</div></td><td><span class="amount">${money(balance)}</span></td><td><span class="status ${status[0]}">${status[1]}</span></td></tr>`;
+      }).join('') : '<tr><td colspan="5" class="empty">Nenhum boleto encontrado.</td></tr>';
+
+      document.querySelector('#receipt-list').innerHTML = pending.length ? pending.map(receipt => {
+        const remainder = remainingForReceipt(receipt);
+        const candidates = suggestionsFor(receipt);
+        const best = candidates[0];
+        return `<article class="receipt"><div class="receipt-row"><div><div class="receipt-name">${escapeHtml(receipt.payer)}</div><div class="receipt-ref">${escapeHtml(receipt.reference || 'Sem identificação')} · ${formatDate(receipt.date)}${receipt.fileName ? ` · ${escapeHtml(receipt.fileName)}` : ''}</div>${receipt.fileId ? `<button type="button" class="attachment-button" data-open-file="${escapeHtml(receipt.fileId)}">Abrir comprovante</button>` : ''}</div><div class="receipt-value">${money(remainder)}<small>${remainder < receipt.amount ? `de ${money(receipt.amount)}` : 'disponível'}</small></div></div>${best ? `<div class="suggestion"><div class="suggest-copy"><div class="suggest-label">MELHOR SUGESTÃO <span class="match-tag">· ${best.reasons.join(' + ')}</span></div><div class="suggest-vendor">${escapeHtml(best.invoice.vendor)} · saldo ${money(best.balance)}</div></div><button class="btn-link" type="button" data-allocate="${escapeHtml(receipt.id)}" data-invoice="${escapeHtml(best.invoice.id)}">Conciliar</button></div>` : `<div class="suggestion"><div class="suggest-copy"><div class="suggest-label">SEM SUGESTÃO AUTOMÁTICA</div><div class="suggest-vendor">Escolha um boleto para vincular</div></div><button class="btn-link" type="button" data-allocate="${escapeHtml(receipt.id)}">Vincular</button></div>`}</article>`;
+      }).join('') : '<div class="empty">Nenhum comprovante pendente.</div>';
+
+      const recent = [...data.allocations].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
+      document.querySelector('#history-list').innerHTML = recent.length ? recent.map(allocation => {
+        const invoice = data.invoices.find(item => item.id === allocation.invoiceId);
+        const receipt = data.receipts.find(item => item.id === allocation.receiptId);
+        if (!invoice || !receipt) return '';
+        return `<div class="history-line"><span class="receipt-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 4 4L19 6"/></svg></span><span><strong>${money(allocation.amount)}</strong> conciliado com ${escapeHtml(invoice.vendor)} <span class="secondary">${escapeHtml(receipt.fileName || receipt.reference || 'Comprovante')}</span></span><time>${formatDate(allocation.date)}</time></div>`;
+      }).join('') : '<div class="empty">As conciliações realizadas aparecerão aqui.</div>';
+    }
+
+    function openAllocation(receiptId, preferredInvoiceId = '') {
+      const receipt = data.receipts.find(item => item.id === receiptId);
+      if (!receipt) return;
+      const select = document.querySelector('#allocate-invoice');
+      const available = data.invoices.filter(invoice => remainingForInvoice(invoice) > 0.005);
+      select.innerHTML = available.map(invoice => `<option value="${escapeHtml(invoice.id)}">${escapeHtml(invoice.vendor)} · ${escapeHtml(invoice.reference)} · saldo ${money(remainingForInvoice(invoice))}</option>`).join('');
+      if (!available.length) { notify('Não há boletos com saldo em aberto.'); return; }
+      if (available.some(invoice => invoice.id === preferredInvoiceId)) select.value = preferredInvoiceId;
+      document.querySelector('#allocate-form [name=receiptId]').value = receiptId;
+      document.querySelector('#allocation-summary').innerHTML = `Comprovante de <strong>${escapeHtml(receipt.payer)}</strong>: ${money(remainingForReceipt(receipt))} disponível de ${money(receipt.amount)}.`;
+      updateAllocationLimit();
+      document.querySelector('#allocate-dialog').showModal();
+    }
+    function updateAllocationLimit() {
+      const receipt = data.receipts.find(item => item.id === document.querySelector('#allocate-form [name=receiptId]').value);
+      const invoice = data.invoices.find(item => item.id === document.querySelector('#allocate-invoice').value);
+      const field = document.querySelector('#allocate-amount');
+      if (!receipt || !invoice) return;
+      const max = Math.min(remainingForReceipt(receipt), remainingForInvoice(invoice));
+      field.max = max.toFixed(2);
+      field.value = max.toFixed(2);
+    }
+
+    function openFileDatabase() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(FILE_DB, 1);
+        request.onupgradeneeded = () => request.result.createObjectStore(FILE_STORE, { keyPath: 'id' });
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+    async function storeAttachment(file) {
+      const id = makeId();
+      const db = await openFileDatabase();
+      await new Promise((resolve, reject) => {
+        const transaction = db.transaction(FILE_STORE, 'readwrite');
+        transaction.objectStore(FILE_STORE).put({ id, name: file.name, type: file.type, blob: file });
+        transaction.oncomplete = resolve;
+        transaction.onerror = () => reject(transaction.error);
+        transaction.onabort = () => reject(transaction.error);
+      });
+      db.close();
+      return id;
+    }
+    async function openAttachment(id) {
+      const db = await openFileDatabase();
+      const attachment = await new Promise((resolve, reject) => {
+        const request = db.transaction(FILE_STORE, 'readonly').objectStore(FILE_STORE).get(id);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      db.close();
+      if (!attachment) { notify('Arquivo não encontrado neste navegador.'); return; }
+      const url = URL.createObjectURL(attachment.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const existing = document.querySelector(`script[src="${src}"]`);
+        if (existing?.dataset.loaded === 'true') { resolve(); return; }
+        const script = existing || document.createElement('script');
+        script.src = src;
+        script.crossOrigin = 'anonymous';
+        script.onload = () => { script.dataset.loaded = 'true'; resolve(); };
+        script.onerror = () => reject(new Error('Não foi possível carregar as ferramentas de leitura.'));
+        if (!existing) document.head.append(script);
+      });
+    }
+    async function getOcrWorker(statusElement) {
+      if (!ocrWorkerPromise) {
+        ocrWorkerPromise = (async () => {
+          await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
+          return Tesseract.createWorker('por', 1, {
+            workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
+            corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5',
+            langPath: 'https://tessdata.projectnaptha.com/4.0.0',
+            logger: message => {
+              if (!statusElement || !message.status) return;
+              statusElement.textContent = message.progress != null ? `${message.status} (${Math.round(message.progress * 100)}%)` : message.status;
+            }
+          });
+        })().catch(error => { ocrWorkerPromise = null; throw error; });
+      }
+      return ocrWorkerPromise;
+    }
+    async function imageForOcr(file, statusElement) {
+      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+        let text = '';
+        const pageCount = Math.min(pdf.numPages, 3);
+        for (let pageNumber = 1; pageNumber <= pageCount; pageNumber++) {
+          statusElement.textContent = `Lendo página ${pageNumber} de ${pageCount}...`;
+          const page = await pdf.getPage(pageNumber);
+          const content = await page.getTextContent();
+          text += content.items.map(item => item.str || '').join('\n') + '\n';
+        }
+        if (text.replace(/\s/g, '').length > 40) return { text, image: null };
+        const images = [];
+        for (let pageNumber = 1; pageNumber <= pageCount; pageNumber++) {
+          statusElement.textContent = `Preparando imagem da página ${pageNumber}...`;
+          const page = await pdf.getPage(pageNumber);
+          const baseViewport = page.getViewport({ scale: 1 });
+          const viewport = page.getViewport({ scale: Math.min(1.7, 1800 / baseViewport.width) });
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.ceil(viewport.width);
+          canvas.height = Math.ceil(viewport.height);
+          await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+          images.push(canvas);
+        }
+        return { text: '', images };
+      }
+      const bitmap = await createImageBitmap(file);
+      const scale = Math.min(1, 1800 / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      bitmap.close();
+      return { text: '', image: canvas };
+    }
+    function extractFields(text) {
+      const normalized = text.replace(/\r/g, '\n');
+      const valueMatch = normalized.match(/(?:valor(?:\s+(?:do\s+documento|original|total|pago|pagamento|a\s+pagar))?|total\s+(?:a\s+pagar|pago))\s*[:\-]?\s*(?:R\$\s*)?([\d.]+,\d{2})/i)
+        || normalized.match(/R\$\s*([\d.]+,\d{2})/i)
+        || normalized.match(/\b(\d{1,3}(?:\.\d{3})*,\d{2})\b/);
+      const dateMatch = normalized.match(/(?:vencimento|data\s+(?:de\s+)?(?:vencimento|pagamento)|pagamento)\s*[:\-]?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/i);
+      const referenceMatch = normalized.match(/(?:nosso\s+n[uú]mero|seu\s+n[uú]mero|n[uú]mero\s+(?:do\s+)?documento|documento|identifica[cç][aã]o)\s*[:#\-]?\s*([A-Z0-9./-]{4,40})/i);
+      const vendorMatch = normalized.match(/(?:benefici[aá]rio|favorecido|fornecedor|recebedor|estabelecimento)\s*[:\-]?\s*([^\n|]{3,80})/i);
+      const fields = {};
+      if (valueMatch) fields.amount = Number(valueMatch[1].replace(/\./g, '').replace(',', '.'));
+      if (dateMatch) {
+        const parts = dateMatch[1].split(/[/-]/);
+        const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+        fields.date = `${year}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+      }
+      if (referenceMatch) fields.reference = referenceMatch[1].trim().split(/\s{2,}/)[0];
+      if (vendorMatch) fields.vendor = vendorMatch[1].trim().split(/\s{2,}/)[0].slice(0, 80);
+      return fields;
+    }
+    async function readDocument(file, kind) {
+      const status = document.querySelector(`#${kind}-ocr-status`);
+      const accepted = file.type === 'application/pdf' || file.type.startsWith('image/') || file.name.toLowerCase().endsWith('.pdf');
+      if (!accepted) throw new Error('Escolha um arquivo PDF ou uma imagem.');
+      if (file.size > MAX_FILE_SIZE) throw new Error('O arquivo deve ter no máximo 12 MB.');
+      status.textContent = 'Abrindo documento...';
+      const documentData = await imageForOcr(file, status);
+      let text = documentData.text;
+      if (!text) {
+        status.textContent = 'Preparando OCR em português...';
+        const worker = await getOcrWorker(status);
+        status.textContent = 'Reconhecendo texto...';
+        const images = documentData.images || [documentData.image];
+        for (let index = 0; index < images.length; index++) {
+          status.textContent = `Reconhecendo página ${index + 1} de ${images.length}...`;
+          const result = await worker.recognize(images[index]);
+          text += result.data.text + '\n';
+        }
+      }
+      const fields = extractFields(text);
+      if (kind === 'invoice') {
+        if (fields.vendor) document.querySelector('#invoice-vendor').value = fields.vendor;
+        if (fields.reference) document.querySelector('#invoice-ref').value = fields.reference;
+        if (fields.amount) document.querySelector('#invoice-amount').value = fields.amount.toFixed(2);
+        if (fields.date) document.querySelector('#invoice-due').value = fields.date;
+      } else {
+        if (fields.vendor) document.querySelector('#receipt-payer').value = fields.vendor;
+        if (fields.reference) document.querySelector('#receipt-ref').value = fields.reference;
+        if (fields.amount) document.querySelector('#receipt-amount').value = fields.amount.toFixed(2);
+        if (fields.date) document.querySelector('#receipt-date').value = fields.date;
+      }
+      const recognized = Object.keys(fields).length;
+      status.textContent = recognized ? `${recognized} campo(s) reconhecido(s). Confira antes de salvar.` : 'Arquivo lido, mas confira e preencha os campos manualmente.';
+    }
+
+    document.querySelector('#today').textContent = new Intl.DateTimeFormat('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' }).format(new Date());
+    document.querySelector('#invoice-search').addEventListener('input', render);
+    document.querySelector('#export-excel').addEventListener('click', exportExcel);
+    document.querySelector('#add-invoice').addEventListener('click', () => document.querySelector('#invoice-dialog').showModal());
+    document.querySelector('#add-receipt').addEventListener('click', () => {
+      document.querySelector('#receipt-date').value = day;
+      document.querySelector('#receipt-dialog').showModal();
+    });
+    document.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => button.closest('dialog').close()));
+    document.querySelectorAll('.nav button[data-view]').forEach(button => button.addEventListener('click', () => {
+      document.querySelector('.app').dataset.view = button.dataset.view;
+      document.querySelectorAll('.nav button[data-view]').forEach(navButton => {
+        const selected = navButton === button;
+        navButton.classList.toggle('active', selected);
+        if (selected) navButton.setAttribute('aria-current', 'page');
+        else navButton.removeAttribute('aria-current');
+      });
+    }));
+    document.querySelector('#receipt-list').addEventListener('click', event => {
+      const button = event.target.closest('[data-allocate]');
+      if (button) openAllocation(button.dataset.allocate, button.dataset.invoice || '');
+    });
+    document.addEventListener('click', event => {
+      const button = event.target.closest('[data-open-file]');
+      if (button) openAttachment(button.dataset.openFile).catch(error => notify(error.message));
+    });
+    for (const kind of ['invoice', 'receipt']) {
+      document.querySelector(`#${kind}-dialog`).addEventListener('close', () => {
+        document.querySelector(`#${kind}-form`).reset();
+        document.querySelector(`#${kind}-ocr-status`).textContent = '';
+        selectedFiles[kind] = null;
+      });
+      document.querySelector(`#${kind}-file`).addEventListener('change', async event => {
+        const file = event.target.files[0];
+        if (!file) return;
+        selectedFiles[kind] = file;
+        try { await readDocument(file, kind); }
+        catch (error) {
+          document.querySelector(`#${kind}-ocr-status`).textContent = error.message || 'Falha ao ler o arquivo.';
+          notify('Não foi possível ler o arquivo. Você pode preencher os campos manualmente.');
+        }
+      });
+    }
+    document.querySelector('#allocate-invoice').addEventListener('change', updateAllocationLimit);
+    document.querySelector('#invoice-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      const formElement = event.currentTarget;
+      const form = new FormData(formElement);
+      let fileId = '';
+      try { if (selectedFiles.invoice) fileId = await storeAttachment(selectedFiles.invoice); }
+      catch (error) { notify('Não foi possível guardar o anexo. Tente novamente.'); return; }
+      data.invoices.unshift({ id: makeId(), vendor: form.get('vendor').trim(), reference: form.get('reference').trim(), amount: Number(form.get('amount')), dueDate: form.get('dueDate'), fileId, fileName: selectedFiles.invoice?.name || '' });
+      selectedFiles.invoice = null;
+      save(); formElement.reset(); document.querySelector('#invoice-dialog').close(); notify('Boleto adicionado.');
+    });
+    document.querySelector('#receipt-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      const formElement = event.currentTarget;
+      const form = new FormData(formElement);
+      let fileId = '';
+      try { if (selectedFiles.receipt) fileId = await storeAttachment(selectedFiles.receipt); }
+      catch (error) { notify('Não foi possível guardar o anexo. Tente novamente.'); return; }
+      data.receipts.unshift({ id: makeId(), payer: form.get('payer').trim(), reference: form.get('reference').trim(), amount: Number(form.get('amount')), date: form.get('date'), fileId, fileName: selectedFiles.receipt?.name || '' });
+      selectedFiles.receipt = null;
+      save(); formElement.reset(); document.querySelector('#receipt-dialog').close(); notify('Comprovante adicionado.');
+    });
+    document.querySelector('#allocate-form').addEventListener('submit', event => {
+      event.preventDefault();
+      const form = new FormData(event.currentTarget);
+      const receipt = data.receipts.find(item => item.id === form.get('receiptId'));
+      const invoice = data.invoices.find(item => item.id === form.get('invoiceId'));
+      const amount = Number(form.get('amount'));
+      if (!receipt || !invoice || !Number.isFinite(amount) || amount <= 0 || amount > remainingForReceipt(receipt) + 0.005 || amount > remainingForInvoice(invoice) + 0.005) {
+        notify('O valor excede o saldo disponível do comprovante ou boleto.'); return;
+      }
+      data.allocations.push({ id: makeId(), receiptId: receipt.id, invoiceId: invoice.id, amount, date: day });
+      save(); document.querySelector('#allocate-dialog').close(); notify('Pagamento conciliado.');
+    });
+    render();
+  </script>
+</body>
+</html>
