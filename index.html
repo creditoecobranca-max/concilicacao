@@ -96,6 +96,11 @@
     .status.partial::before { background: #dfa92f; }
     .status.paid { background: var(--green-soft); color: var(--green); }
     .status.paid::before { background: var(--green); }
+    .record-actions { display: flex; align-items: center; gap: 7px; white-space: nowrap; }
+    .record-action { padding: 5px 7px; border: 1px solid var(--line); border-radius: 4px; background: white; color: #536258; font-size: 10px; font-weight: 600; }
+    .record-action:hover { background: #f5f8f4; }
+    .record-action.danger { color: #a64b37; }
+    .receipt-controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
     .empty { padding: 28px 15px; color: var(--muted); text-align: center; font-size: 12px; }
     .receipt-list { display: grid; }
     .receipt { padding: 15px 17px; border-top: 1px solid #edf0ec; }
@@ -216,7 +221,7 @@
   </div>
 
   <dialog id="invoice-dialog">
-    <div class="modal-head"><h3>Novo boleto</h3><button class="icon-close" type="button" data-close aria-label="Fechar">×</button></div>
+    <div class="modal-head"><h3 id="invoice-dialog-title">Novo boleto</h3><button class="icon-close" type="button" data-close aria-label="Fechar">×</button></div>
     <form class="form" id="invoice-form">
       <div class="field"><label for="invoice-vendor">Fornecedor / beneficiário</label><input id="invoice-vendor" name="vendor" required maxlength="80" placeholder="Ex.: Energia Sul"></div>
       <div class="form-grid"><div class="field"><label for="invoice-ref">Número do boleto</label><input id="invoice-ref" name="reference" required maxlength="40" placeholder="Ex.: BL-2026-04"></div><div class="field"><label for="invoice-amount">Valor total (R$)</label><input id="invoice-amount" name="amount" type="number" min="0.01" step="0.01" required placeholder="900,00"></div></div>
@@ -227,7 +232,7 @@
   </dialog>
 
   <dialog id="receipt-dialog">
-    <div class="modal-head"><h3>Novo comprovante</h3><button class="icon-close" type="button" data-close aria-label="Fechar">×</button></div>
+    <div class="modal-head"><h3 id="receipt-dialog-title">Novo comprovante</h3><button class="icon-close" type="button" data-close aria-label="Fechar">×</button></div>
     <form class="form" id="receipt-form">
       <div class="field"><label for="receipt-payer">Pagador / descrição</label><input id="receipt-payer" name="payer" required maxlength="80" placeholder="Ex.: Energia Sul"></div>
       <div class="form-grid"><div class="field"><label for="receipt-ref">Identificação (opcional)</label><input id="receipt-ref" name="reference" maxlength="40" placeholder="Número do boleto"></div><div class="field"><label for="receipt-amount">Valor pago (R$)</label><input id="receipt-amount" name="amount" type="number" min="0.01" step="0.01" required placeholder="300,00"></div></div>
@@ -256,6 +261,7 @@
     const MAX_FILE_SIZE = 12 * 1024 * 1024;
     const day = new Date().toISOString().slice(0, 10);
     const selectedFiles = { invoice: null, receipt: null };
+    const editingRecords = { invoice: null, receipt: null };
     let ocrWorkerPromise = null;
     const initialData = {
       invoices: [
@@ -418,14 +424,20 @@
         const balance = remainingForInvoice(invoice);
         const percent = Math.min(100, paid / invoice.amount * 100);
         const status = balance <= 0.005 ? ['paid', 'Conciliado'] : paid > 0.005 ? ['partial', 'Parcial'] : ['', 'Em aberto'];
-        return `<tr><td><span class="vendor">${escapeHtml(invoice.vendor)}</span><span class="secondary">${escapeHtml(invoice.reference)}</span>${invoice.fileId ? `<button type="button" class="attachment-button" data-open-file="${escapeHtml(invoice.fileId)}">Abrir ${escapeHtml(invoice.fileName || 'anexo')}</button>` : ''}</td><td>${formatDate(invoice.dueDate)}</td><td><span class="amount">${money(invoice.amount)}</span><div class="progress"><i style="width:${percent}%"></i></div><div class="progress-meta">${money(paid)} pago</div></td><td><span class="amount">${money(balance)}</span></td><td><span class="status ${status[0]}">${status[1]}</span></td></tr>`;
+        return `<tr><td><span class="vendor">${escapeHtml(invoice.vendor)}</span><span class="secondary">${escapeHtml(invoice.reference)}</span>${invoice.fileId ? `<button type="button" class="attachment-button" data-open-file="${escapeHtml(invoice.fileId)}">Abrir ${escapeHtml(invoice.fileName || 'anexo')}</button>` : ''}<div class="record-actions"><button class="record-action" type="button" data-edit-invoice="${escapeHtml(invoice.id)}">Editar</button><button class="record-action danger" type="button" data-delete-invoice="${escapeHtml(invoice.id)}">Excluir</button></div></td><td>${formatDate(invoice.dueDate)}</td><td><span class="amount">${money(invoice.amount)}</span><div class="progress"><i style="width:${percent}%"></i></div><div class="progress-meta">${money(paid)} pago</div></td><td><span class="amount">${money(balance)}</span></td><td><span class="status ${status[0]}">${status[1]}</span></td></tr>`;
       }).join('') : '<tr><td colspan="5" class="empty">Nenhum boleto encontrado.</td></tr>';
 
-      document.querySelector('#receipt-list').innerHTML = pending.length ? pending.map(receipt => {
+      const receipts = [...data.receipts].sort((a, b) => b.date.localeCompare(a.date));
+      document.querySelector('#receipt-list').innerHTML = receipts.length ? receipts.map(receipt => {
         const remainder = remainingForReceipt(receipt);
-        const candidates = suggestionsFor(receipt);
+        const candidates = remainder > 0.005 ? suggestionsFor(receipt) : [];
         const best = candidates[0];
-        return `<article class="receipt"><div class="receipt-row"><div><div class="receipt-name">${escapeHtml(receipt.payer)}</div><div class="receipt-ref">${escapeHtml(receipt.reference || 'Sem identificação')} · ${formatDate(receipt.date)}${receipt.fileName ? ` · ${escapeHtml(receipt.fileName)}` : ''}</div>${receipt.fileId ? `<button type="button" class="attachment-button" data-open-file="${escapeHtml(receipt.fileId)}">Abrir comprovante</button>` : ''}</div><div class="receipt-value">${money(remainder)}<small>${remainder < receipt.amount ? `de ${money(receipt.amount)}` : 'disponível'}</small></div></div>${best ? `<div class="suggestion"><div class="suggest-copy"><div class="suggest-label">MELHOR SUGESTÃO <span class="match-tag">· ${best.reasons.join(' + ')}</span></div><div class="suggest-vendor">${escapeHtml(best.invoice.vendor)} · saldo ${money(best.balance)}</div></div><button class="btn-link" type="button" data-allocate="${escapeHtml(receipt.id)}" data-invoice="${escapeHtml(best.invoice.id)}">Conciliar</button></div>` : `<div class="suggestion"><div class="suggest-copy"><div class="suggest-label">SEM SUGESTÃO AUTOMÁTICA</div><div class="suggest-vendor">Escolha um boleto para vincular</div></div><button class="btn-link" type="button" data-allocate="${escapeHtml(receipt.id)}">Vincular</button></div>`}</article>`;
+        const reconciliation = remainder <= 0.005
+          ? `<div class="suggestion"><div class="suggest-copy"><div class="suggest-label">CONCILIADO INTEGRALMENTE</div><div class="suggest-vendor">Comprovante totalmente vinculado</div></div></div>`
+          : best
+            ? `<div class="suggestion"><div class="suggest-copy"><div class="suggest-label">MELHOR SUGESTÃO <span class="match-tag">· ${best.reasons.join(' + ')}</span></div><div class="suggest-vendor">${escapeHtml(best.invoice.vendor)} · saldo ${money(best.balance)}</div></div><button class="btn-link" type="button" data-allocate="${escapeHtml(receipt.id)}" data-invoice="${escapeHtml(best.invoice.id)}">Conciliar</button></div>`
+            : `<div class="suggestion"><div class="suggest-copy"><div class="suggest-label">SEM SUGESTÃO AUTOMÁTICA</div><div class="suggest-vendor">Escolha um boleto para vincular</div></div><button class="btn-link" type="button" data-allocate="${escapeHtml(receipt.id)}">Vincular</button></div>`;
+        return `<article class="receipt"><div class="receipt-row"><div><div class="receipt-name">${escapeHtml(receipt.payer)}</div><div class="receipt-ref">${escapeHtml(receipt.reference || 'Sem identificação')} · ${formatDate(receipt.date)}${receipt.fileName ? ` · ${escapeHtml(receipt.fileName)}` : ''}</div>${receipt.fileId ? `<button type="button" class="attachment-button" data-open-file="${escapeHtml(receipt.fileId)}">Abrir comprovante</button>` : ''}</div><div class="receipt-value">${money(remainder)}<small>${remainder < receipt.amount ? `de ${money(receipt.amount)}` : 'disponível'}</small></div></div>${reconciliation}<div class="receipt-controls"><span class="secondary">${money(allocatedForReceipt(receipt.id))} conciliado</span><div class="record-actions"><button class="record-action" type="button" data-edit-receipt="${escapeHtml(receipt.id)}">Editar</button><button class="record-action danger" type="button" data-delete-receipt="${escapeHtml(receipt.id)}">Excluir</button></div></div></article>`;
       }).join('') : '<div class="empty">Nenhum comprovante pendente.</div>';
 
       const recent = [...data.allocations].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
@@ -497,6 +509,72 @@
       link.rel = 'noopener';
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }
+    async function removeAttachment(id) {
+      if (!id) return;
+      const db = await openFileDatabase();
+      await new Promise((resolve, reject) => {
+        const transaction = db.transaction(FILE_STORE, 'readwrite');
+        transaction.objectStore(FILE_STORE).delete(id);
+        transaction.oncomplete = resolve;
+        transaction.onerror = () => reject(transaction.error);
+        transaction.onabort = () => reject(transaction.error);
+      });
+      db.close();
+    }
+    function openInvoiceForm(id = null) {
+      const form = document.querySelector('#invoice-form');
+      const invoice = id ? data.invoices.find(item => item.id === id) : null;
+      form.reset();
+      selectedFiles.invoice = null;
+      editingRecords.invoice = invoice?.id || null;
+      document.querySelector('#invoice-dialog-title').textContent = invoice ? 'Editar boleto' : 'Novo boleto';
+      form.querySelector('[type="submit"]').textContent = invoice ? 'Salvar alterações' : 'Salvar boleto';
+      document.querySelector('#invoice-ocr-status').textContent = invoice?.fileName ? `Anexo atual: ${invoice.fileName}` : '';
+      if (invoice) {
+        document.querySelector('#invoice-vendor').value = invoice.vendor;
+        document.querySelector('#invoice-ref').value = invoice.reference;
+        document.querySelector('#invoice-amount').value = invoice.amount;
+        document.querySelector('#invoice-due').value = invoice.dueDate;
+      }
+      document.querySelector('#invoice-dialog').showModal();
+    }
+    function openReceiptForm(id = null) {
+      const form = document.querySelector('#receipt-form');
+      const receipt = id ? data.receipts.find(item => item.id === id) : null;
+      form.reset();
+      selectedFiles.receipt = null;
+      editingRecords.receipt = receipt?.id || null;
+      document.querySelector('#receipt-dialog-title').textContent = receipt ? 'Editar comprovante' : 'Novo comprovante';
+      form.querySelector('[type="submit"]').textContent = receipt ? 'Salvar alterações' : 'Adicionar comprovante';
+      document.querySelector('#receipt-ocr-status').textContent = receipt?.fileName ? `Anexo atual: ${receipt.fileName}` : '';
+      if (receipt) {
+        document.querySelector('#receipt-payer').value = receipt.payer;
+        document.querySelector('#receipt-ref').value = receipt.reference || '';
+        document.querySelector('#receipt-amount').value = receipt.amount;
+        document.querySelector('#receipt-date').value = receipt.date;
+      }
+      document.querySelector('#receipt-dialog').showModal();
+    }
+    async function deleteInvoice(id) {
+      const invoice = data.invoices.find(item => item.id === id);
+      if (!invoice || !confirm(`Excluir o boleto ${invoice.reference}? Os pagamentos vinculados serão liberados para conciliação.`)) return;
+      const fileId = invoice.fileId;
+      data.invoices = data.invoices.filter(item => item.id !== id);
+      data.allocations = data.allocations.filter(item => item.invoiceId !== id);
+      save();
+      try { await removeAttachment(fileId); } catch (error) { console.error('Não foi possível remover o anexo do boleto.', error); }
+      notify('Boleto excluído e vínculos removidos.');
+    }
+    async function deleteReceipt(id) {
+      const receipt = data.receipts.find(item => item.id === id);
+      if (!receipt || !confirm(`Excluir o comprovante de ${receipt.payer}? Os valores vinculados voltarão ao saldo dos boletos.`)) return;
+      const fileId = receipt.fileId;
+      data.receipts = data.receipts.filter(item => item.id !== id);
+      data.allocations = data.allocations.filter(item => item.receiptId !== id);
+      save();
+      try { await removeAttachment(fileId); } catch (error) { console.error('Não foi possível remover o anexo do comprovante.', error); }
+      notify('Comprovante excluído e vínculos removidos.');
     }
     function loadScript(src) {
       return new Promise((resolve, reject) => {
@@ -621,11 +699,8 @@
     document.querySelector('#today').textContent = new Intl.DateTimeFormat('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' }).format(new Date());
     document.querySelector('#invoice-search').addEventListener('input', render);
     document.querySelector('#export-excel').addEventListener('click', exportExcel);
-    document.querySelector('#add-invoice').addEventListener('click', () => document.querySelector('#invoice-dialog').showModal());
-    document.querySelector('#add-receipt').addEventListener('click', () => {
-      document.querySelector('#receipt-date').value = day;
-      document.querySelector('#receipt-dialog').showModal();
-    });
+    document.querySelector('#add-invoice').addEventListener('click', () => openInvoiceForm());
+    document.querySelector('#add-receipt').addEventListener('click', () => openReceiptForm());
     document.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => button.closest('dialog').close()));
     document.querySelectorAll('.nav button[data-view]').forEach(button => button.addEventListener('click', () => {
       document.querySelector('.app').dataset.view = button.dataset.view;
@@ -637,8 +712,18 @@
       });
     }));
     document.querySelector('#receipt-list').addEventListener('click', event => {
+      const editButton = event.target.closest('[data-edit-receipt]');
+      const deleteButton = event.target.closest('[data-delete-receipt]');
       const button = event.target.closest('[data-allocate]');
+      if (editButton) { openReceiptForm(editButton.dataset.editReceipt); return; }
+      if (deleteButton) { deleteReceipt(deleteButton.dataset.deleteReceipt); return; }
       if (button) openAllocation(button.dataset.allocate, button.dataset.invoice || '');
+    });
+    document.querySelector('#invoice-rows').addEventListener('click', event => {
+      const editButton = event.target.closest('[data-edit-invoice]');
+      const deleteButton = event.target.closest('[data-delete-invoice]');
+      if (editButton) openInvoiceForm(editButton.dataset.editInvoice);
+      else if (deleteButton) deleteInvoice(deleteButton.dataset.deleteInvoice);
     });
     document.addEventListener('click', event => {
       const button = event.target.closest('[data-open-file]');
@@ -649,6 +734,9 @@
         document.querySelector(`#${kind}-form`).reset();
         document.querySelector(`#${kind}-ocr-status`).textContent = '';
         selectedFiles[kind] = null;
+        editingRecords[kind] = null;
+        document.querySelector(`#${kind}-dialog-title`).textContent = kind === 'invoice' ? 'Novo boleto' : 'Novo comprovante';
+        document.querySelector(`#${kind}-form [type="submit"]`).textContent = kind === 'invoice' ? 'Salvar boleto' : 'Adicionar comprovante';
       });
       document.querySelector(`#${kind}-file`).addEventListener('change', async event => {
         const file = event.target.files[0];
@@ -666,23 +754,59 @@
       event.preventDefault();
       const formElement = event.currentTarget;
       const form = new FormData(formElement);
-      let fileId = '';
-      try { if (selectedFiles.invoice) fileId = await storeAttachment(selectedFiles.invoice); }
+      const editingId = editingRecords.invoice;
+      const existing = editingId ? data.invoices.find(item => item.id === editingId) : null;
+      const amount = Number(form.get('amount'));
+      if (existing && amount + 0.005 < paidForInvoice(existing.id)) {
+        notify(`O valor do boleto não pode ser menor que ${money(paidForInvoice(existing.id))} já conciliados.`);
+        return;
+      }
+      const replacedFileId = selectedFiles.invoice ? existing?.fileId : '';
+      let fileId = existing?.fileId || '';
+      let fileName = existing?.fileName || '';
+      try {
+        if (selectedFiles.invoice) {
+          fileId = await storeAttachment(selectedFiles.invoice);
+          fileName = selectedFiles.invoice.name;
+        }
+      }
       catch (error) { notify('Não foi possível guardar o anexo. Tente novamente.'); return; }
-      data.invoices.unshift({ id: makeId(), vendor: form.get('vendor').trim(), reference: form.get('reference').trim(), amount: Number(form.get('amount')), dueDate: form.get('dueDate'), fileId, fileName: selectedFiles.invoice?.name || '' });
+      const invoice = { id: editingId || makeId(), vendor: form.get('vendor').trim(), reference: form.get('reference').trim(), amount, dueDate: form.get('dueDate'), fileId, fileName };
+      if (editingId) data.invoices[data.invoices.findIndex(item => item.id === editingId)] = invoice;
+      else data.invoices.unshift(invoice);
       selectedFiles.invoice = null;
-      save(); formElement.reset(); document.querySelector('#invoice-dialog').close(); notify('Boleto adicionado.');
+      save(); formElement.reset(); document.querySelector('#invoice-dialog').close();
+      if (replacedFileId) await removeAttachment(replacedFileId).catch(error => console.error(error));
+      notify(editingId ? 'Boleto atualizado.' : 'Boleto adicionado.');
     });
     document.querySelector('#receipt-form').addEventListener('submit', async event => {
       event.preventDefault();
       const formElement = event.currentTarget;
       const form = new FormData(formElement);
-      let fileId = '';
-      try { if (selectedFiles.receipt) fileId = await storeAttachment(selectedFiles.receipt); }
+      const editingId = editingRecords.receipt;
+      const existing = editingId ? data.receipts.find(item => item.id === editingId) : null;
+      const amount = Number(form.get('amount'));
+      if (existing && amount + 0.005 < allocatedForReceipt(existing.id)) {
+        notify(`O valor do comprovante não pode ser menor que ${money(allocatedForReceipt(existing.id))} já conciliados.`);
+        return;
+      }
+      const replacedFileId = selectedFiles.receipt ? existing?.fileId : '';
+      let fileId = existing?.fileId || '';
+      let fileName = existing?.fileName || '';
+      try {
+        if (selectedFiles.receipt) {
+          fileId = await storeAttachment(selectedFiles.receipt);
+          fileName = selectedFiles.receipt.name;
+        }
+      }
       catch (error) { notify('Não foi possível guardar o anexo. Tente novamente.'); return; }
-      data.receipts.unshift({ id: makeId(), payer: form.get('payer').trim(), reference: form.get('reference').trim(), amount: Number(form.get('amount')), date: form.get('date'), fileId, fileName: selectedFiles.receipt?.name || '' });
+      const receipt = { id: editingId || makeId(), payer: form.get('payer').trim(), reference: form.get('reference').trim(), amount, date: form.get('date'), fileId, fileName };
+      if (editingId) data.receipts[data.receipts.findIndex(item => item.id === editingId)] = receipt;
+      else data.receipts.unshift(receipt);
       selectedFiles.receipt = null;
-      save(); formElement.reset(); document.querySelector('#receipt-dialog').close(); notify('Comprovante adicionado.');
+      save(); formElement.reset(); document.querySelector('#receipt-dialog').close();
+      if (replacedFileId) await removeAttachment(replacedFileId).catch(error => console.error(error));
+      notify(editingId ? 'Comprovante atualizado.' : 'Comprovante adicionado.');
     });
     document.querySelector('#allocate-form').addEventListener('submit', event => {
       event.preventDefault();
